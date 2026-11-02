@@ -1,0 +1,3 @@
+customer_id,signup_date,home_store_id,region,loyalty_tier,birth_year
+C001,2025-05-01,S01,North,gold,1988
+C002,2026-01-15,S01,North,none,1999

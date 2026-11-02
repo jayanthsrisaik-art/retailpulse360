@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retailpulse360"
+version = "1.0.0"
+description = "Retail analytics platform: validated warehouse ETL, KPIs, customer churn risk, inventory alerts, API and dashboard."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26,<3",
+    "scikit-learn>=1.4,<2",
+    "fastapi>=0.110,<1",
+    "uvicorn>=0.29,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "httpx>=0.27,<1"]
+
+[project.scripts]
+retailpulse = "retailpulse.cli:main"
+
+[tool.setuptools]
+packages = ["retailpulse"]
+
+[tool.setuptools.package-data]
+retailpulse = ["static/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

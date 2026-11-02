@@ -1,0 +1,5 @@
+order_id,order_ts,customer_id,store_id,channel
+O1,2026-06-01T10:00:00,C001,S01,store
+O2,2026-06-02T11:00:00,C002,WEB,online
+O3,2026-06-08T12:00:00,,S01,store
+OBAD,not a date,C001,S01,store

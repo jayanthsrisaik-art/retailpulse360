@@ -1,0 +1,4 @@
+return_id,line_id,return_date,quantity,reason
+R1,L3,2026-06-05,1,wrong size
+R2,LNOPE,2026-06-05,1,damaged
+R3,L2,2026-06-03,2,changed mind

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RetailPulse 360</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5d6677; --line: #e3e6eb;
+    --accent: #2f6fdf; --accent-soft: rgba(47,111,223,.12); --good: #1b8a5a; --bad: #c2412d; --warn: #b7791f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #11151c; --panel: #1a2029; --text: #e7eaf0; --muted: #9aa3b2; --line: #2b3340;
+            --accent: #6d9cf0; --accent-soft: rgba(109,156,240,.16); --good: #4cc38a; --bad: #f0806c; --warn: #e3b55b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 20px 16px 8px; max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap;
+           gap: 12px; align-items: baseline; justify-content: space-between; }
+  h1 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
+  h2 { margin: 0 0 10px; font-size: 15px; }
+  .muted { color: var(--muted); }
+  main { max-width: 1200px; margin: 0 auto; padding: 8px 16px 40px; display: grid; gap: 16px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .tile, .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .tile .label { color: var(--muted); font-size: 12px; }
+  .tile .value { font-size: 22px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .delta { font-size: 12px; font-variant-numeric: tabular-nums; }
+  .up { color: var(--good); } .down { color: var(--bad); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td.num, th.num { text-align: right; }
+  .scroll { overflow-x: auto; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: var(--accent-soft); }
+  .pill.stockout, .pill.high { color: var(--bad); } .pill.reorder, .pill.medium { color: var(--warn); }
+  svg text { fill: var(--muted); font-size: 11px; }
+  .chart-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+  .chart-area { fill: var(--accent-soft); }
+  .gridline { stroke: var(--line); }
+  #tip { position: fixed; pointer-events: none; background: var(--panel); border: 1px solid var(--line);
+         border-radius: 6px; padding: 4px 8px; font-size: 12px; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>RetailPulse 360</h1><div class="muted" id="range">Loading…</div></div>
+  <div class="controls">
+    <select id="store" aria-label="Store"><option value="">All stores</option></select>
+    <select id="category" aria-label="Category"><option value="">All categories</option></select>
+  </div>
+</header>
+<main>
+  <section class="tiles" id="tiles"></section>
+  <section class="panel">
+    <h2>Weekly net sales <span class="muted" style="font-weight:400">· last 52 weeks</span></h2>
+    <div id="chart"></div>
+  </section>
+  <section class="grid2">
+    <div class="panel scroll"><h2>Category mix · last 28 days</h2><table id="cats"></table></div>
+    <div class="panel scroll"><h2>Customer segments</h2><table id="segs"></table></div>
+  </section>
+  <section class="grid2">
+    <div class="panel scroll"><h2>Inventory alerts</h2><div class="muted" id="invsum"></div><table id="inv"></table></div>
+    <div class="panel scroll"><h2>Highest value at risk</h2><div class="muted">Active customers, P(no purchase in 90 days) ≥ 0.6, ranked by probability × last-90-day spend</div><table id="risk"></table></div>
+  </section>
+  <section class="panel muted" id="dq"></section>
+</main>
+<div id="tip"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const money = (v) => v == null ? "–" : v.toLocaleString(undefined, {style: "currency", currency: "USD", maximumFractionDigits: 0});
+const pct = (v) => v == null ? "–" : (v * 100).toFixed(1) + "%";
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const get = async (path, params = {}) => {
+  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "" && v != null));
+  const r = await fetch(path + (q.toString() ? "?" + q : ""));
+  if (!r.ok) throw new Error(path + " " + r.status);
+  return r.json();
+};
+const table = (el, cols, rows) => {
+  el.innerHTML = "<thead><tr>" + cols.map(c => `<th class="${c.num ? "num" : ""}">${c.h}</th>`).join("") + "</tr></thead><tbody>" +
+    rows.map(r => "<tr>" + cols.map(c => `<td class="${c.num ? "num" : ""}">${c.f(r)}</td>`).join("") + "</tr>").join("") + "</tbody>";
+};
+
+let meta;
+async function init() {
+  meta = await get("/api/meta");
+  $("range").textContent = `Data ${meta.data_from} → ${meta.data_to}`;
+  for (const s of meta.stores) $("store").insertAdjacentHTML("beforeend", `<option value="${esc(s.store_id)}">${esc(s.store_name)}</option>`);
+  for (const c of meta.categories) $("category").insertAdjacentHTML("beforeend", `<option>${esc(c)}</option>`);
+  const failed = meta.dq_checks.filter(c => !c.passed);
+  const st = meta.etl_run?.stats ?? {};
+  const q = Object.values(st.quarantined ?? {}).reduce((a, b) => a + b, 0);
+  const d = Object.values(st.duplicates_dropped ?? {}).reduce((a, b) => a + b, 0);
+  $("dq").textContent = `Last ETL run ${meta.etl_run?.run_id ?? "–"}: ${meta.etl_run?.status ?? "–"} · ` +
+    `${meta.dq_checks.length - failed.length}/${meta.dq_checks.length} data-quality checks passed · ` +
+    `${q} records quarantined · ${d} duplicate export rows dropped`;
+  $("store").onchange = $("category").onchange = refresh;
+  await Promise.all([refresh(), loadStatic()]);
+}
+
+async function refresh() {
+  const f = {store: $("store").value, category: $("category").value};
+  const [cmp, ts] = await Promise.all([
+    get("/api/kpis/compare", {days: 28, ...f}),
+    get("/api/kpis/timeseries", {grain: "week", ...f}),
+  ]);
+  const c = cmp.current, ly = cmp.vs_last_year;
+  const delta = (v) => v == null ? "" : `<span class="delta ${v >= 0 ? "up" : "down"}">${v >= 0 ? "▲" : "▼"} ${pct(Math.abs(v))} vs LY</span>`;
+  const tiles = [
+    ["Net sales · 28d", money(c.net_sales), delta(ly.net_sales)],
+    ["Orders", c.orders.toLocaleString(), delta(ly.orders)],
+    ["Avg order value", money(c.avg_order_value), delta(ly.avg_order_value)],
+    ["Gross margin", pct(c.gross_margin_pct), money(c.gross_margin)],
+    ["Return rate (units)", pct(c.return_rate_units), money(c.refunds) + " refunded"],
+    ["Customers", c.customers.toLocaleString(), delta(ly.customers)],
+  ];
+  $("tiles").innerHTML = tiles.map(([l, v, s]) => `<div class="tile"><div class="label">${l}</div><div class="value">${v}</div><div class="muted delta">${s}</div></div>`).join("");
+  drawChart(ts.slice(1, -1)); // drop partial first/last weeks
+}
+
+function drawChart(rows) {
+  const el = $("chart"), W = el.clientWidth || 800, H = 220, P = {l: 56, r: 12, t: 10, b: 24};
+  if (!rows.length) { el.textContent = "No data"; return; }
+  const max = Math.max(...rows.map(r => r.net_sales)) * 1.08;
+  const x = (i) => P.l + (i / Math.max(rows.length - 1, 1)) * (W - P.l - P.r);
+  const y = (v) => H - P.b - (v / max) * (H - P.t - P.b);
+  const pts = rows.map((r, i) => `${x(i)},${y(r.net_sales)}`).join(" ");
+  const ticks = [0, .25, .5, .75, 1].map(t => max * t);
+  const every = Math.ceil(rows.length / Math.max(2, Math.floor((W - P.l) / 90)));  // ~90px per label
+  el.innerHTML = `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly net sales">
+    ${ticks.map(t => `<line class="gridline" x1="${P.l}" x2="${W - P.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${P.l - 6}" y="${y(t) + 4}" text-anchor="end">${money(t)}</text>`).join("")}
+    <polygon class="chart-area" points="${x(0)},${y(0)} ${pts} ${x(rows.length - 1)},${y(0)}"/>
+    <polyline class="chart-line" points="${pts}"/>
+    ${rows.map((r, i) => i % every ? "" : `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${esc(r.period.slice(2))}</text>`).join("")}
+    <rect x="${P.l}" y="${P.t}" width="${W - P.l - P.r}" height="${H - P.t - P.b}" fill="transparent" id="hit"/>
+  </svg>`;
+  const tip = $("tip");
+  el.querySelector("#hit").onmousemove = (e) => {
+    const b = e.target.getBoundingClientRect();
+    const i = Math.round(((e.clientX - b.left) / b.width) * (rows.length - 1));
+    const r = rows[Math.max(0, Math.min(rows.length - 1, i))];
+    tip.style.display = "block"; tip.style.left = e.clientX + 12 + "px"; tip.style.top = e.clientY - 10 + "px";
+    tip.textContent = `Week of ${r.period}: ${money(r.net_sales)} · ${r.orders} orders`;
+  };
+  el.querySelector("#hit").onmouseleave = () => tip.style.display = "none";
+}
+
+async function loadStatic() {
+  const [cats, segs, inv, risk] = await Promise.all([
+    get("/api/kpis/breakdown", {by: "category"}), get("/api/segments"),
+    get("/api/inventory/alerts", {limit: 12}), get("/api/customers/at-risk", {limit: 12}),
+  ]);
+  table($("cats"), [
+    {h: "Category", f: r => esc(r.key)}, {h: "Net sales", num: 1, f: r => money(r.net_sales)},
+    {h: "Share", num: 1, f: r => pct(r.share)}, {h: "Margin", num: 1, f: r => pct(r.gross_margin_pct)},
+    {h: "Returns", num: 1, f: r => pct(r.return_rate_units)}], cats);
+  table($("segs"), [
+    {h: "Segment", f: r => esc(r.rfm_segment)}, {h: "Customers", num: 1, f: r => r.customers},
+    {h: "Avg churn P", num: 1, f: r => r.avg_churn_probability == null ? "–" : pct(r.avg_churn_probability)},
+    {h: "High risk", num: 1, f: r => r.high_risk}, {h: "Lapsed", num: 1, f: r => r.lapsed}], segs);
+  $("invsum").textContent = Object.entries(inv.counts).map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`).join(" · ");
+  table($("inv"), [
+    {h: "Status", f: r => `<span class="pill ${r.status}">${r.status}</span>`}, {h: "Store", f: r => esc(r.store_id)},
+    {h: "Product", f: r => esc(r.product_name)}, {h: "On hand", num: 1, f: r => r.on_hand}, {h: "On order", num: 1, f: r => r.on_order},
+    {h: "Daily units", num: 1, f: r => r.avg_daily_units.toFixed(2)}, {h: "Order qty", num: 1, f: r => r.suggested_order_qty}], inv.items);
+  table($("risk"), [
+    {h: "Customer", f: r => esc(r.customer_id)}, {h: "Segment", f: r => esc(r.rfm_segment)},
+    {h: "P(churn)", num: 1, f: r => `<span class="pill high">${pct(r.churn_probability)}</span>`},
+    {h: "Days since", num: 1, f: r => r.recency_days}, {h: "Value at risk", num: 1, f: r => money(r.value_at_risk)}], risk);
+}
+
+init().catch(err => { $("range").textContent = "Failed to load: " + err.message; });
+window.addEventListener("resize", () => refresh());
+</script>
+</body>
+</html>

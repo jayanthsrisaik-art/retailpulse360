@@ -1,0 +1,143 @@
+{
+  "summary_2026-06-01_2026-06-08": {
+    "start": "2026-06-01",
+    "end": "2026-06-08",
+    "store": null,
+    "category": null,
+    "orders": 3,
+    "customers": 2,
+    "units": 8,
+    "gross_sales": 200.0,
+    "net_sales": 190.0,
+    "discounts": 10.0,
+    "gross_margin": 100.0,
+    "gross_margin_pct": 0.5263,
+    "avg_order_value": 63.33,
+    "units_per_order": 2.667,
+    "refunds": 50.0,
+    "net_sales_after_returns": 140.0,
+    "return_rate_units": 0.125
+  },
+  "breakdown_category": [
+    {
+      "key": "Apparel",
+      "net_sales": 140.0,
+      "share": 0.7368,
+      "gross_margin_pct": 0.5714,
+      "orders": 2,
+      "units": 3,
+      "return_rate_units": 0.3333
+    },
+    {
+      "key": "Grocery",
+      "net_sales": 50.0,
+      "share": 0.2632,
+      "gross_margin_pct": 0.4,
+      "orders": 2,
+      "units": 5,
+      "return_rate_units": 0.0
+    }
+  ],
+  "inventory": [
+    {
+      "store_id": "S01",
+      "product_id": "P001",
+      "product_name": "Oat milk 1L",
+      "category": "Grocery",
+      "status": "stockout",
+      "on_hand": 0,
+      "on_order": 0,
+      "avg_daily_units": 0.179,
+      "days_of_cover": 0.0,
+      "lead_time_days": 5,
+      "safety_stock": 2.5,
+      "reorder_point": 3.4,
+      "suggested_order_qty": 5,
+      "suggested_order_cost": 30.0,
+      "inventory_value": 0.0
+    },
+    {
+      "store_id": "WEB",
+      "product_id": "P002",
+      "product_name": "Rain jacket",
+      "category": "Apparel",
+      "status": "reorder",
+      "on_hand": 1,
+      "on_order": 0,
+      "avg_daily_units": 0.071,
+      "days_of_cover": 14.0,
+      "lead_time_days": 7,
+      "safety_stock": 1.7,
+      "reorder_point": 2.2,
+      "suggested_order_qty": 2,
+      "suggested_order_cost": 40.0,
+      "inventory_value": 20.0
+    },
+    {
+      "store_id": "S01",
+      "product_id": "P002",
+      "product_name": "Rain jacket",
+      "category": "Apparel",
+      "status": "overstock",
+      "on_hand": 100,
+      "on_order": 0,
+      "avg_daily_units": 0.036,
+      "days_of_cover": 2800.0,
+      "lead_time_days": 7,
+      "safety_stock": 0.8,
+      "reorder_point": 1.1,
+      "suggested_order_qty": 0,
+      "suggested_order_cost": 0.0,
+      "inventory_value": 2000.0
+    },
+    {
+      "store_id": "WEB",
+      "product_id": "P001",
+      "product_name": "Oat milk 1L",
+      "category": "Grocery",
+      "status": "no_recent_sales",
+      "on_hand": 5,
+      "on_order": 0,
+      "avg_daily_units": 0.0,
+      "days_of_cover": null,
+      "lead_time_days": 5,
+      "safety_stock": 0.0,
+      "reorder_point": 0.0,
+      "suggested_order_qty": 0,
+      "suggested_order_cost": 0.0,
+      "inventory_value": 30.0
+    }
+  ],
+  "quarantine": [
+    {
+      "source": "order_lines",
+      "record_key": "L5",
+      "reason": "unknown product"
+    },
+    {
+      "source": "order_lines",
+      "record_key": "L6",
+      "reason": "non-positive quantity"
+    },
+    {
+      "source": "order_lines",
+      "record_key": "L7",
+      "reason": "order missing or quarantined"
+    },
+    {
+      "source": "orders",
+      "record_key": "OBAD",
+      "reason": "unparseable order_ts"
+    },
+    {
+      "source": "returns",
+      "record_key": "R2",
+      "reason": "line missing or quarantined"
+    },
+    {
+      "source": "returns",
+      "record_key": "R3",
+      "reason": "returns exceed quantity sold"
+    }
+  ]
+}

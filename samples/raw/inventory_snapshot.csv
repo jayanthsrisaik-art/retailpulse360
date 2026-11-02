@@ -1,0 +1,5 @@
+snapshot_date,store_id,product_id,on_hand,on_order
+2026-06-08,S01,P001,0,0
+2026-06-08,S01,P002,100,0
+2026-06-08,WEB,P001,5,0
+2026-06-08,WEB,P002,1,0
